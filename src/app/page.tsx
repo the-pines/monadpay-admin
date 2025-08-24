@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { BaseError, parseUnits } from "viem";
-import PointsTokenAbi from "../abis/PointsToken.sol/PointsToken.json";
 import AdminMinterAbi from "../abis/AdminMinterLeaderboard.sol/AdminMinterLeaderboard.json";
+import type { Abi } from "viem";
 
-const POINTS_ADDRESS = process.env
-  .NEXT_PUBLIC_POINTS_TOKEN_ADDRESS as `0x${string}`;
 const AML_ADDRESS = process.env.NEXT_PUBLIC_AML_ADDRESS as `0x${string}`;
+
+const AdminMinterTyped = AdminMinterAbi as { abi: Abi };
 
 export default function Home() {
   const { address, isConnected } = useAccount();
@@ -18,7 +18,7 @@ export default function Home() {
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
 
   const { data: isAdmin } = useReadContract({
-    abi: (AdminMinterAbi as any).abi,
+    abi: AdminMinterTyped.abi,
     address: AML_ADDRESS,
     functionName: "admins",
     args: [address ?? "0x0000000000000000000000000000000000000000"],
@@ -27,15 +27,15 @@ export default function Home() {
 
   const { writeContractAsync, isPending } = useWriteContract();
 
-  const decimals = 0n; // Points are integer
+  const decimals = 0; // Points are integer
   const parsedAmount = useMemo(() => {
     try {
-      if (!amount) return 0n;
+      if (!amount) return BigInt(0);
       return parseUnits(amount, Number(decimals));
     } catch {
-      return 0n;
+      return BigInt(0);
     }
-  }, [amount]);
+  }, [amount, decimals]);
 
   async function onMint() {
     setError(null);
@@ -43,7 +43,7 @@ export default function Home() {
     try {
       if (!AML_ADDRESS) throw new Error("Missing AML address");
       const hash = await writeContractAsync({
-        abi: (AdminMinterAbi as any).abi,
+        abi: AdminMinterTyped.abi,
         address: AML_ADDRESS,
         functionName: "award",
         args: [target as `0x${string}`, parsedAmount],
@@ -67,7 +67,12 @@ export default function Home() {
       <header className='flex items-center justify-between'>
         <h1 className='text-xl font-semibold'>Admin Dashboard</h1>
         <button
-          onClick={() => (window as any).appKit?.open?.()}
+          onClick={() => {
+            const w = window as unknown as {
+              appKit?: { open?: () => void };
+            };
+            w.appKit?.open?.();
+          }}
           className='px-3 py-2 rounded-md border'
         >
           {isConnected
@@ -125,7 +130,7 @@ export default function Home() {
             Submitted:{" "}
             <a
               className='underline'
-              href={`$${"{"}process.env.NEXT_PUBLIC_MONAD_EXPLORER_URL{"}"}/tx/${txHash}`}
+              href={`${process.env.NEXT_PUBLIC_MONAD_EXPLORER_URL}/tx/${txHash}`}
               target='_blank'
               rel='noreferrer'
             >

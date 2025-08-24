@@ -66,7 +66,8 @@ export function Providers({ children }: { children: ReactNode }) {
         icons: ["/favicon.ico"],
       },
     });
-    (window as any).appKit = instance;
+    const w = window as unknown as { appKit?: unknown };
+    w.appKit = instance;
   }, []);
 
   return (
